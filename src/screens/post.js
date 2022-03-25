@@ -8,9 +8,11 @@ import {
   Image,
   TextInput,
 } from 'react-native';
-import { Picker } from '@react-native-picker/picker';
+import DropDownPicker from 'react-native-dropdown-picker';
+import axios from 'axios';
 
 import Loading from '../components/loading';
+import Comment from '../components/comment';
 import { getImage, getName, capitalizeFirstLetter } from '../helpers';
 
 const Post = ({ route }) => {
@@ -24,17 +26,86 @@ const Post = ({ route }) => {
     body: '',
   });
 
-  useEffect(() => {
-    fetch(`https://jsonplaceholder.typicode.com/posts/${postId}`)
-      .then(response => response.json())
-      .then(json => setPost(json))
-      .catch(err => console.log('Request Failed', err));
+  const [open, setOpen] = useState(false);
+  const [value, setValue] = useState(null);
+  const [items, setItems] = useState([
+    { label: 'Select an item', value: 'default' },
+    { label: 'Name', value: 'name' },
+    { label: 'Email', value: 'email' },
+    { label: 'Body', value: 'body' },
+  ]);
 
-    fetch(`https://jsonplaceholder.typicode.com/comments?postId=${postId}`)
-      .then(response => response.json())
-      .then(json => setComments(json))
-      .catch(err => console.log('Request Failed', err));
+  const handlePicker = value => {
+    setValue(value);
+    setSearchAtt(value);
+  };
+
+  const handleTextChange = value => {
+    if (searchAtt === 'name') {
+      setSearchComments(prevState => {
+        let name = Object.assign({}, prevState.name);
+        name = value;
+        return { name };
+      });
+    }
+    if (searchAtt === 'email') {
+      setSearchComments(prevState => {
+        let email = Object.assign({}, prevState.email);
+        email = value;
+        return { email };
+      });
+    }
+    if (searchAtt === 'body') {
+      setSearchComments(prevState => {
+        let body = Object.assign({}, prevState.body);
+        body = value;
+        return { body };
+      });
+    }
+    if (searchAtt === 'default') {
+      setSearchComments({
+        name: '',
+        email: '',
+        body: '',
+      });
+    }
+  };
+
+  useEffect(() => {
+    async function fetchAPI() {
+      try {
+        let response = await axios.get(
+          `https://jsonplaceholder.typicode.com/posts/${postId}`,
+        );
+        setPost(response.data);
+      } catch (error) {
+        console.log('error', error);
+      }
+    }
+    fetchAPI();
   }, []);
+
+  useEffect(() => {
+    async function fetchAPI() {
+      try {
+        let response = await axios.get(
+          'https://jsonplaceholder.typicode.com/comments',
+          {
+            params: {
+              postId,
+              name: searchComments.name || null,
+              email: searchComments.email || null,
+              body: searchComments.body || null,
+            },
+          },
+        );
+        setComments(response.data);
+      } catch (error) {
+        console.log('error', error);
+      }
+    }
+    fetchAPI();
+  }, [searchComments]);
 
   return (
     <>
@@ -61,50 +132,23 @@ const Post = ({ route }) => {
             {/* COMMENT SECTION */}
             <View>
               <Text style={{ marginTop: 50 }}>Comments</Text>
-              {/* TODO: STYLE PICKER
-              TODO: SET VALUE TO setSearchComments
-              TODO: SET USESTATE TO RERENDER
-              TODO: MAKE SURE CALL */}
-              <Picker
-                selectedValue={searchAtt}
-                style={{ height: 10, width: 50 }}
-                onValueChange={(itemValue, itemIndex) =>
-                  setSearchAtt(itemValue)
-                }>
-                <Picker.Item label="Java" value="java" />
-                <Picker.Item label="JavaScript" value="js" />
-              </Picker>
+              <DropDownPicker
+                open={open}
+                value={value}
+                items={items}
+                setOpen={setOpen}
+                setValue={handlePicker}
+                setItems={setItems}
+                style={{ width: 300, marginBottom: 160 }}
+                listMode="SCROLLVIEW"
+              />
             </View>
             <TextInput
               style={styles.input}
               placeholder="Search your comment here..."
-              onChangeText={setSearchComments[searchAtt]}
+              onChangeText={handleTextChange}
             />
-            {comments.map(comment => {
-              return (
-                <View
-                  key={comment.id}
-                  style={{
-                    borderWidth: 1,
-                    borderColor: 'red',
-                    marginVertical: 10,
-                    padding: 10,
-                  }}>
-                  <Text style={{ marginVertical: 5 }}>
-                    <Text style={{ fontWeight: 'bold' }}>Name:</Text>{' '}
-                    {capitalizeFirstLetter(comment.name)}
-                  </Text>
-                  <Text style={{ marginVertical: 5 }}>
-                    <Text style={{ fontWeight: 'bold' }}>Email:</Text>{' '}
-                    {capitalizeFirstLetter(comment.email)}
-                  </Text>
-                  <Text style={{ marginVertical: 5 }}>
-                    <Text style={{ fontWeight: 'bold' }}>Comment:</Text>{' '}
-                    {capitalizeFirstLetter(comment.body)}
-                  </Text>
-                </View>
-              );
-            })}
+            <Comment comments={comments} />
           </ScrollView>
         </SafeAreaView>
       )}

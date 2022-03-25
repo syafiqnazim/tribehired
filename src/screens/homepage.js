@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { SafeAreaView, ScrollView } from 'react-native';
 import Card from '../components/card';
+import axios from 'axios';
 
 const Homepage = ({ navigation }) => {
   const [posts, setPosts] = useState();
 
   useEffect(() => {
-    fetch('https://jsonplaceholder.typicode.com/posts')
-      .then(response => response.json())
-      .then(json => setPosts(json))
-      .catch(err => console.log('Request Failed', err));
+    async function fetchAPI() {
+      try {
+        let response = await axios.get(
+          'https://jsonplaceholder.typicode.com/posts',
+        );
+        setPosts(response.data);
+      } catch (error) {
+        console.log('error', error);
+      }
+    }
+    fetchAPI();
   }, []);
 
   return (
